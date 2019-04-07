@@ -1,0 +1,325 @@
+---
+title: "Assignment 3"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+Load the dataset
+```{r}
+rawData<-read.csv("/Users/Ashley/Downloads/1_clean.csv")
+Data_clean<- rawData[rawData$Unemployed!=-9999 & rawData$Uninsured!=-2222,]
+attach(Data_clean)
+```
+
+
+```{r}
+boxplot(Suicide, horizontal = TRUE, main = "Suicide %")
+Data_clean$Unempl_n<-Unemployed/Population_Size
+Data_clean$MD_n<-Major_Depression/Population_Size
+Data_clean$UI_n<- Uninsured/Population_Size
+Data_clean$Drug_n<- Recent_Drug_Use/Population_Size
+```
+
+```{r}
+attach(Data_clean)
+boxplot(Drug_n)
+boxplot(Data_clean$Suicide, horizontal = TRUE, xlab="Suicide rate", main="boxplot of suicide rate")
+hist(Data_clean$Unempl_n,xlab ="Unemployment Rate",main="Unemployment")
+hist(MD_n, xlab ="Major Depression Rate",main="Major Depression")
+hist(Drug_n, xlab ="Drug Usage Rate",main="Drug Usage")
+hist(UI_n, xlab ="Uninsured Rate",main="Uninsured")
+hist(Prim_Care_Phys_Rate, xlab ="Primary Care per 100000 ppl",main="Primary Care")
+hist(Suicide,xlab="Suicide per 100000 ppl", main="Suicide Rate")
+suicide_level <- cut(Suicide,c(0,10,17,100))
+levels(suicide_level)<- c("low","medium","high")
+Data_clean$suicide_l <- suicide_level
+Dataset<-c("Unempl_n","MD_n","UI_n", "Drug_n","Prim_Care_Phys_Rate")
+Dataset2<-c("suicide_l","Suicide","Unemployed", "Major_Depression","Uninsured", "Recent_Drug_Use","Prim_Care_Phys_Rate","Unempl_n","MD_n","UI_n", "Drug_n")
+Dataset3<-c("suicide_l","Prim_Care_Phys_Rate","Unempl_n","MD_n","UI_n", "Drug_n")
+attach(Data_clean)
+Data_sum <- Data_clean[Dataset2]
+data_f<-Data_clean[Dataset3]
+table(suicide_l)
+#Randomly drop 50% of medium 
+all_in<-which(data_f$suicide_l=="medium")
+length(all_in)
+delete_in<-sample(all_in,length(all_in)-700)
+data_f_dr<-Data_sum[-delete_in,]
+length(delete_in)
+data_f<-data_f_dr[Dataset3]
+table(data_f$suicide_l)
+plot(data_f$suicide_l)
+attach(data_f)
+
+#Correlation between independent variables.
+Dataset_cor <- Data_clean[Dataset]
+cor_indep<-cor(Dataset_cor)
+symnum(cor_indep)
+#No independent variables highly correlated with each other. 
+```
+
+```{r}
+library(nnet)
+#Suicide with primary health care rate
+M_prim <- multinom(suicide_l ~ Prim_Care_Phys_Rate, reflevel="low")
+summary(M_prim)
+z_prim <- summary(M_prim)$coefficients/summary(M_prim)$standard.errors
+p_prim<- (1 - pnorm(abs(z_prim), 0, 1))*2
+p_prim
+M_prim_pred <- predict(M_prim,type="probs")
+#Graph
+plot(NA,xlim = c(min(Prim_Care_Phys_Rate), max(Prim_Care_Phys_Rate)), ylim = c(0, 1),xlab = "Prim_Care_Rate", ylab = "Predicted Probability", main = "Primary Care Rate")
+lines(Prim_Care_Phys_Rate, M_prim_pred[, 1], col = "green", lty = 1)
+lines(Prim_Care_Phys_Rate, M_prim_pred[, 2], col = "blue", lty = 2)
+lines(Prim_Care_Phys_Rate, M_prim_pred[, 3], col = "red", lty = 3)
+text(50, 0.4, "low", col = "green")
+text(50, 0.1, "high", col = "red")
+text(70, 0.6, "medium", col = "blue")
+
+#Suicide with Uninsured rate
+M_unin <- multinom(suicide_l ~ UI_n)
+summary(M_unin)
+z_unin <- summary(M_unin)$coefficients/summary(M_unin)$standard.errors
+p_unin<- (1 - pnorm(abs(z_unin), 0, 1))*2
+p_unin
+M_unin <- predict(M_unin,type="probs")
+#Graph
+plot(NA,xlim = c(min(UI_n), max(UI_n)), ylim = c(0, 1),xlab = "Uninsured_rate", ylab = "Predicted Probability", main="Uninsured Rate")
+lines(UI_n, M_unin[, 1], col = "green", lty = 1)
+lines(UI_n, M_unin[, 2], col = "blue", lty = 2)
+lines(UI_n, M_unin[, 3], col = "red", lty = 3)
+text(0.05, 0.4, "low", col = "green", pos = 1)
+text(0.1, 0.02, "high", col = "red")
+text(0.1, 0.8, "medium", col = "blue")
+
+#Suicide with Unemloyed rate
+M_unem <- multinom(suicide_l ~ Unempl_n)
+summary(M_unem)
+z_unem <- summary(M_unem)$coefficients/summary(M_unem)$standard.errors
+z_unem
+p_unem<- (1 - pnorm(abs(z_unem), 0, 1))*2
+p_unem
+#Graph
+plot(NA,xlim = c(min(Unempl_n), max(Unempl_n)), ylim = c(0, 1),xlab = "Unemployment_rate", ylab = "Predicted Probability", main="Uemployment Rate")
+lines(Unempl_n, M_unin[, 1], col = "green", lty = 1)
+lines(Unempl_n, M_unin[, 2], col = "blue", lty = 2)
+lines(Unempl_n, M_unin[, 3], col = "red", lty = 3)
+text(0.05, 0.4, "low", col = "green", pos = 1)
+text(0.1, 0.02, "high", col = "red")
+text(0.1, 0.6, "medium", col = "blue")
+
+#Suicide with Major Depression rate
+M_madp <- multinom(suicide_l ~ MD_n)
+summary(M_madp)
+z_madp <- summary(M_madp)$coefficients/summary(M_madp)$standard.errors
+p_madp<- (1 - pnorm(abs(z_madp), 0, 1))*2
+p_madp
+M_madp <- predict(M_madp,type="probs")
+#Graph
+plot(NA,xlim = c(min(MD_n), max(MD_n)), ylim = c(0, 1),xlab = "Major_Depression_rate", ylab = "Predicted Probability", main="Major Depression Rate")
+lines(MD_n, M_madp[, 1], col = "green", lty = 1)
+lines(MD_n, M_madp[, 2], col = "blue", lty = 2)
+lines(MD_n, M_madp[, 3], col = "red", lty = 3)
+text(0.045, 0.8, "low", col = "green")
+text(0.05, 0.0, "high", col = "red")
+text(0.045, 0.2, "medium", col = "blue")
+
+#Suicide with Recent drug use rate
+M_drug <- multinom(suicide_l ~ Drug_n)
+summary(M_drug)
+z_drug <- summary(M_drug)$coefficients/summary(M_drug)$standard.errors
+p_drug<- (1 - pnorm(abs(z_drug), 0, 1))*2
+p_drug
+M_drug <- predict(M_drug,type="probs")
+#Graph
+plot(NA,xlim = c(min(Drug_n), max(Drug_n)), ylim = c(0, 1),xlab = "Drug_Use_rate", ylab = "Predicted Probability", main="Drug Usage Rate")
+lines(Drug_n, M_drug[, 1], col = "green", lty = 1)
+lines(Drug_n, M_drug[, 2], col = "blue", lty = 2)
+lines(Drug_n, M_drug[, 3], col = "red", lty = 3)
+text(0.06, 0.4, "low", col = "green")
+text(0.06, 0.1, "high", col = "red")
+text(0.06, 0.65, "medium", col = "blue")
+
+library(caret)
+set.seed(42)
+index <- createDataPartition(data_f$suicide_l, p = 0.8, list = FALSE)
+train_data <- data_f[index, ]
+test_data  <- data_f[-index, ]
+data.train_new<- train_data[-6]
+data.test_new<- test_data[-6]
+train_labels <- train_data$suicide_level
+test_labels<- test_data$suicide_level
+
+#Unemployment rate is not significant, so we only use the other 4 variables for prediction model.
+Model_mlg <- multinom(suicide_l ~ MD_n+UI_n+Prim_Care_Phys_Rate+Drug_n, data = data_f)
+summary(Model_mlg)
+z <- summary(Model_mlg)$coefficients/summary(Model_mlg)$standard.errors
+p<- (1 - pnorm(abs(z), 0, 1))*2
+p
+head(fitted(Model_mlg))
+predict_mlg<- predict(Model_mlg, test_data[,-1])
+mlg_Er<-table(test_data$suicide_l, predict_mlg)
+sum(diag(mlg_Er))/sum(mlg_Er)
+mlg_Er
+Model_pred <- predict(Model_mlg,type="probs")
+correct<-as.data.frame(Model_pred)
+head(Model_pred)
+LR_acc<-sum(diag(mlg_Er))/sum(mlg_Er)
+precision_LR<-diag(mlg_Er)/rowSums(mlg_Er)
+recall_LR<-(diag(mlg_Er)/colSums(mlg_Er))
+
+#Another m regression model with chi square and other numebrs
+library(mlogit)
+longdata = mlogit.data(data_f, choice = "suicide_l", shape = "wide")
+model = mlogit(suicide_l ~ 1 | Prim_Care_Phys_Rate + UI_n +Drug_n+MD_n,data = longdata, reflevel = "low")
+summary(model)
+
+```
+
+Random Forest
+```{r}
+
+library(randomForest)
+rf<- randomForest(suicide_l~., data=train_data,mtry=2)
+rf
+predict_rf<- predict(rf, test_data[,-1])
+tab_rf<-table(test_data$suicide_l,predict_rf)
+tab_rf
+rf.pre<-predict(rf,test_data)
+varImpPlot(rf)
+rf_acc<-sum(diag(tab_rf))/sum(tab_rf)
+precision_rf<-diag(tab_rf)/rowSums(tab_rf)
+recall_rf<-(diag(tab_rf)/colSums(tab_rf))
+
+
+library(ROCR)
+prediction_for_roc_curve <- predict(rf,test_data[,-1],type="prob")
+pretty_colours <- c("green","blue","red")
+# Specify the different classes 
+classes <- levels(test_data$suicide_l)
+# For each class
+for (i in 1:3)
+{
+  # Define which observations belong to class[i]
+  true_values <- ifelse(test_data[,1]==classes[i],1,0)
+  # Assess the performance of classifier for class[i]
+  pred <- prediction(prediction_for_roc_curve[,i],true_values)
+  perf <- performance(pred, "tpr", "fpr")
+  if (i==1)
+  {
+    plot(perf,main="Random Forest ROC Curve",col=pretty_colours[i]) 
+  }
+  else
+  {
+    plot(perf,main="Random Forest ROC Curve",col=pretty_colours[i],add=TRUE) 
+  }
+  # Calculate the AUC and print it to screen
+  auc.perf <- performance(pred, measure = "auc")
+  print(auc.perf@y.values)
+}
+
+```
+
+```{r}
+#Decision Tree
+library(rpart)
+library(rpart.plot)
+Tree <- rpart(suicide_l~., data = train, method = 'class')
+rpart.plot(Tree)
+tree.pre<- predict(Tree,test, type = 'class')
+tab_tr<-table(test$suicide_l,tree.pre)
+tab_tr
+Tree_acc<-sum(diag(tab_tr))/sum(tab_tr)
+precision_tree<-diag(tab_tr)/rowSums(tab_tr)
+recall_tree<-(diag(tab_tr)/colSums(tab_tr))
+table(test_data$suicide_l)
+#ROC Curve
+prediction_for_roc_curve_Tree <- predict(Tree,test_data[,-1],type="prob")
+pretty_colours <- c("green","blue","red")
+# Specify the different classes 
+classes <- levels(test_data$suicide_l)
+# For each class
+for (i in 1:3)
+{
+  # Define which observations belong to class[i]
+  true_values <- ifelse(test_data[,1]==classes[i],1,0)
+  # Assess the performance of classifier for class[i]
+  pred <- prediction(prediction_for_roc_curve_Tree[,i],true_values)
+  perf <- performance(pred, "tpr", "fpr")
+  if (i==1)
+  {
+    plot(perf,main="Decision Tree ROC Curve",col=pretty_colours[i]) 
+  }
+  else
+  {
+    plot(perf,main="Decision Tree ROC Curve",col=pretty_colours[i],add=TRUE) 
+  }
+  # Calculate the AUC and print it to screen
+  auc.perf <- performance(pred, measure = "auc")
+  print(auc.perf@y.values)
+}
+```
+
+```{r}
+#Naive bayes
+library(naivebayes)
+library(dplyr)
+library(psych)
+#Partition:
+set.seed(1234)
+ind <- sample(2, nrow(data_f), replace = T, prob = c(0.8, 0.2))
+train <- data_f[ind == 1,]
+test <- data_f[ind == 2,]
+#NB
+NB<- naive_bayes(suicide_l~., data= train,usekernel = T)
+plot(NB)
+p_NB<- predict(NB,train,type = 'prob')
+p1<-predict(NB,train)
+(tab1<- table(p1,train$suicide_l))
+1-sum(diag(tab1))/sum(tab1)
+p2<-predict(NB,test)
+(tab2<- table(p2,test$suicide_l))
+NB_acc<-sum(diag(tab2))/sum(tab2)
+precision_NB<-diag(tab2)/rowSums(tab2)
+recall_NB<-(diag(tab2)/colSums(tab2))
+
+#ROC Curve
+prediction_for_roc_curve_NB <- predict(NB,test[,-1],type="prob")
+pretty_colours <- c("green","blue","red")
+# Specify the different classes 
+classes <- levels(test$suicide_l)
+# For each class
+for (i in 1:3)
+{
+  # Define which observations belong to class[i]
+  true_values <- ifelse(test[,1]==classes[i],1,0)
+  # Assess the performance of classifier for class[i]
+  pred <- prediction(prediction_for_roc_curve_NB[,i],true_values)
+  perf <- performance(pred, "tpr", "fpr")
+  if (i==1)
+  {
+    plot(perf,main="Naive Bayes ROC Curve",col=pretty_colours[i]) 
+  }
+  else
+  {
+    plot(perf,main="Naive Bayes ROC Curve",col=pretty_colours[i],add=TRUE) 
+  }
+  # Calculate the AUC and print it to screen
+  auc.perf <- performance(pred, measure = "auc")
+  print(auc.perf@y.values)
+}
+
+#Tables sum
+Acc<-data.frame(rf_acc,Tree_acc,NB_acc,LR_acc)
+Acc
+Rec<-data.frame(recall_rf,recall_tree,recall_NB,recall_LR)
+Rec
+Pre<- data.frame(precision_rf,precision_tree,precision_NB,precision_LR)
+Pre
+
+
+```
+```
+
+
